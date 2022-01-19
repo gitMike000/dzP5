@@ -1,0 +1,170 @@
+diff --git a/include/Bomb.h b/include/Bomb.h
+index d122e7a..3a142e2 100644
+--- a/include/Bomb.h
++++ b/include/Bomb.h
+@@ -1,6 +1,9 @@
+ #pragma once
+ 
+ #include "DynamicObject.h"
++#include "Visitor.h"
++
++class Visitor;
+ 
+ class Bomb : public DynamicObject
+ {
+@@ -10,6 +13,9 @@ public:
+ 
+ 	void Draw() const override;
+ 
++    void Accept( const Visitor& v);
++
++
+ private:
+ 
+ };
+diff --git a/include/DynamicObject.h b/include/DynamicObject.h
+index b38e36d..cb2b096 100644
+--- a/include/DynamicObject.h
++++ b/include/DynamicObject.h
+@@ -12,6 +12,10 @@ public:
+ 
+     inline void SetSpeed(double sp) { speed = sp; }
+     inline void SetDirection(double dx, double dy) { xDirction = dx; yDirection = dy; }
++
++    inline double GetSpeed() { return speed; };
++    inline double GetDirectionX() { return xDirction;}
++    inline double GetDirectionY() { return yDirection;}
+     
+     virtual void Move(uint16_t time) { x += xDirction * speed * time * 0.001; y += yDirection * speed * time * 0.001; };
+ 
+@@ -20,4 +24,4 @@ protected:
+     double speed;
+     double xDirction, yDirection;
+ 
+-};
+\ No newline at end of file
++};
+diff --git a/include/Plane.h b/include/Plane.h
+index 1920bdd..eda44b2 100644
+--- a/include/Plane.h
++++ b/include/Plane.h
+@@ -1,6 +1,9 @@
+ #pragma once
+ 
+ #include "DynamicObject.h"
++#include "Visitor.h"
++
++class Visitor;
+ 
+ class Plane : public DynamicObject {
+ public:
+@@ -9,6 +12,8 @@ public:
+ 
+     inline void ChangePlaneY(double dy) { yDirection += dy; }
+ 
++    void Accept(const Visitor& v);
++
+ private:
+ 
+ };
+diff --git a/include/Visitor.h b/include/Visitor.h
+new file mode 100644
+index 0000000..a3af851
+--- /dev/null
++++ b/include/Visitor.h
+@@ -0,0 +1,30 @@
++#ifndef VISITOR_H
++#define VISITOR_H
++
++#include "Bomb.h"
++#include "Plane.h"
++#include "MyTools.h"
++
++class Bomb;
++class Plane;
++
++class Visitor {
++
++public:
++    virtual void log(Bomb& b) const = 0;
++    virtual void log(Plane& p) const = 0;
++
++};
++
++class LogVisitor: public Visitor {
++
++public:
++
++    void log(Bomb& b) const override;
++
++    void log(Plane& p) const override;
++
++};
++
++
++#endif // VISITOR_H
+diff --git a/src/Bomb.cpp b/src/Bomb.cpp
+index 4008eaa..01a3f4e 100644
+--- a/src/Bomb.cpp
++++ b/src/Bomb.cpp
+@@ -7,3 +7,8 @@ void Bomb::Draw() const {
+   ScreenSingleton::getInstance().GotoXY(x, y);
+   std::cout << "*";
+ }
++
++void Bomb::Accept(const Visitor& v)
++{
++        v.log(*this);
++};
+diff --git a/src/Plane.cpp b/src/Plane.cpp
+index 221559e..6988436 100644
+--- a/src/Plane.cpp
++++ b/src/Plane.cpp
+@@ -17,3 +17,8 @@ void Plane::Draw() const
+     ScreenSingleton::getInstance().GotoXY(x + 3, y + 1);
+     std::cout << "////";
+ }
++
++void Plane::Accept(const Visitor& v)
++{
++        v.log(*this);
++};
+diff --git a/src/SBomber.cpp b/src/SBomber.cpp
+index 2bd57d7..4e89ab6 100644
+--- a/src/SBomber.cpp
++++ b/src/SBomber.cpp
+@@ -84,6 +84,15 @@ void SBomber::MoveObjects() {
+   for (size_t i = 0; i < vecDynamicObj.size(); i++) {
+     if (vecDynamicObj[i] != nullptr) {
+       vecDynamicObj[i]->Move(deltaTime);
++
++      LogVisitor v;
++      Bomb* pBomb = dynamic_cast<Bomb*>(vecDynamicObj[i]);
++      if (pBomb != nullptr) pBomb->Accept(v);
++      else {
++        Plane* pPlane = dynamic_cast<Plane*>(vecDynamicObj[i]);
++        if (pPlane != nullptr) pPlane->Accept(v);
++
++      };
+     }
+   }
+ };
+diff --git a/src/Visitor.cpp b/src/Visitor.cpp
+new file mode 100644
+index 0000000..d1307c6
+--- /dev/null
++++ b/src/Visitor.cpp
+@@ -0,0 +1,13 @@
++#include "include/Visitor.h"
++
++void LogVisitor::log(Bomb& b) const  {
++    MyTools::FileLoggerSingletone::getInstance().WriteToLog(std::string(__func__) + " Speed bomb= ", b.GetSpeed());
++    MyTools::FileLoggerSingletone::getInstance().WriteToLog(std::string(__func__) + " dx = ", b.GetDirectionX());
++    MyTools::FileLoggerSingletone::getInstance().WriteToLog(std::string(__func__) + " dy = ", b.GetDirectionY());
++};
++
++void LogVisitor::log(Plane& p) const  {
++    MyTools::FileLoggerSingletone::getInstance().WriteToLog(std::string(__func__) + " Speed plane= ", p.GetSpeed());
++    MyTools::FileLoggerSingletone::getInstance().WriteToLog(std::string(__func__) + " dx = ", p.GetDirectionX());
++    MyTools::FileLoggerSingletone::getInstance().WriteToLog(std::string(__func__) + " dy = ", p.GetDirectionY());
++};
