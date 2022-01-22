@@ -1,0 +1,365 @@
+diff --git a/include/Bomb.h b/include/Bomb.h
+index d122e7a..e994573 100644
+--- a/include/Bomb.h
++++ b/include/Bomb.h
+@@ -1,14 +1,31 @@
+ #pragma once
+ 
+ #include "DynamicObject.h"
++#include "Observ.h"
++#include "DestroyableGroundObject.h"
++#include "SBomber.h"
+ 
+-class Bomb : public DynamicObject
++//#include <vector>
++
++class Observer;
++class SBomber;
++
++class Bomb : public DynamicObject, Observable
+ {
+ public:
++    //Bomb();
++    //~Bomb();
+ 
+ 	static const uint16_t BombCost = 10; // стоимость бомбы в очках
+ 
+-	void Draw() const override;
++	void Draw() const override;   
++
++    DestroyableGroundObject* CheckDestoyableObjects(std::vector<DestroyableGroundObject*> vecDestoyableObjects);
++                    // void NotifyObserver() override;
++//    std::vector<DestroyableGroundObject*> vecDestoyableObjects; //possible variant
++                   // std::vector<Observer*> observers;
++    //    void AddObserver(Observer* o) override;
++
+ 
+ private:
+ 
+diff --git a/include/DestroyableGroundObject.h b/include/DestroyableGroundObject.h
+index fda59d0..5bbfe8e 100644
+--- a/include/DestroyableGroundObject.h
++++ b/include/DestroyableGroundObject.h
+@@ -3,8 +3,9 @@
+ #include <stdint.h>
+ 
+ #include "GameObject.h"
++#include "Observ.h"
+ 
+-class DestroyableGroundObject : public GameObject
++class DestroyableGroundObject : public GameObject, public Observer
+ {
+ public:
+ 
+@@ -12,6 +13,8 @@ public:
+ 
+     virtual inline uint16_t GetScore() const = 0;
+ 
++    virtual bool HandleInsideCheck(const double x1, const double x2) const = 0;
++
+ protected:
+ 
+-};
+\ No newline at end of file
++};
+diff --git a/include/DynamicObject.h b/include/DynamicObject.h
+index b38e36d..93c278d 100644
+--- a/include/DynamicObject.h
++++ b/include/DynamicObject.h
+@@ -4,7 +4,8 @@
+ 
+ #include "GameObject.h"
+ 
+-class DynamicObject : public GameObject 
++
++class DynamicObject : public GameObject
+ {
+ public:
+ 
+@@ -20,4 +21,4 @@ protected:
+     double speed;
+     double xDirction, yDirection;
+ 
+-};
+\ No newline at end of file
++};
+diff --git a/include/House.h b/include/House.h
+index 02cec43..6772bd2 100644
+--- a/include/House.h
++++ b/include/House.h
+@@ -3,8 +3,10 @@
+ #include "DestroyableGroundObject.h"
+ #include <cstdint>
+ 
++
+ class House : public DestroyableGroundObject {
+ public:
++
+   bool isInside(double x1, double x2) const override;
+ 
+   inline uint16_t GetScore() const override {
+@@ -13,6 +15,8 @@ public:
+ 
+   void Draw() const override;
+ 
++  bool HandleInsideCheck(const double x1, const double x2) const override;
++
+ private:
+   const uint16_t score = 40;
+ };
+diff --git a/include/Observ.h b/include/Observ.h
+new file mode 100644
+index 0000000..1e2fd26
+--- /dev/null
++++ b/include/Observ.h
+@@ -0,0 +1,21 @@
++#ifndef OBSERV_H
++#define OBSERV_H
++
++class Observer {
++public:
++//    Observer();
++//    ~Observer();
++
++    virtual bool HandleInsideCheck(const double x1, const double x2) const =0;
++     // virtual void HandleEvent();
++};
++
++class Observable {
++public:
++
++//    virtual void AddObserver(Observer* o);
++//    virtual void RemoveObserver(Observer* o);
++//    virtual bool NotifyObserver();
++};
++
++#endif // OBSERV_H
+diff --git a/include/SBomber.h b/include/SBomber.h
+index 3ce1b9c..92e41bb 100644
+--- a/include/SBomber.h
++++ b/include/SBomber.h
+@@ -8,6 +8,8 @@
+ #include "Ground.h"
+ #include "Tank.h"
+ 
++class Bomb;
++
+ class SBomber
+ {
+ public:
+@@ -25,19 +27,24 @@ public:
+     void MoveObjects();
+     void CheckObjects();
+ 
++    void  DeleteStaticObj(GameObject* pObj);
++    std::vector<DestroyableGroundObject*> FindDestoyableGroundObjects() const;
++
++    int16_t score;
++
+ private:
+ 
+     void CheckPlaneAndLevelGUI();
+     void CheckBombsAndGround();
+-    void  CheckDestoyableObjects(Bomb* pBomb);
++//    void  CheckDestoyableObjects(Bomb* pBomb);
+ 
+     void  DeleteDynamicObj(DynamicObject * pBomb);
+-    void  DeleteStaticObj(GameObject* pObj);
++//    void  DeleteStaticObj(GameObject* pObj);
+ 
+     Ground * FindGround() const;
+     Plane * FindPlane() const;
+     LevelGUI * FindLevelGUI() const;
+-    std::vector<DestroyableGroundObject*> FindDestoyableGroundObjects() const;
++//    std::vector<DestroyableGroundObject*> FindDestoyableGroundObjects() const;
+     std::vector<Bomb*> FindAllBombs() const;
+ 
+     void DropBomb();
+@@ -49,5 +56,5 @@ private:
+ 
+     uint64_t startTime, finishTime, passedTime;
+     uint16_t bombsNumber, deltaTime, fps;
+-    int16_t score;
+-};
+\ No newline at end of file
++//    int16_t score;
++};
+diff --git a/include/Tank.h b/include/Tank.h
+index 34b3d5c..64ef0dd 100644
+--- a/include/Tank.h
++++ b/include/Tank.h
+@@ -3,6 +3,7 @@
+ #include <stdint.h>
+ 
+ #include "DestroyableGroundObject.h"
++#include "Observ.h"
+ 
+ class Tank : public DestroyableGroundObject
+ {
+@@ -14,6 +15,9 @@ public:
+ 
+ 	void Draw() const override;
+ 
++    bool HandleInsideCheck(const double x1, const double x2) const override;
++
++
+ private:
+ 
+ 	const uint16_t score = 30;
+diff --git a/src/Bomb.cpp b/src/Bomb.cpp
+index 4008eaa..0aaa51b 100644
+--- a/src/Bomb.cpp
++++ b/src/Bomb.cpp
+@@ -1,9 +1,38 @@
+ #include "include/Bomb.h"
+ #include <iostream>
+ #include "include/ScreenSingleton.h"
++#include "include/Tank.h"
++#include "include/House.h"
+ 
+ void Bomb::Draw() const {
+   //ScreenSingleton::getInstance().SetColor(CC_LightMagenta);
+   ScreenSingleton::getInstance().GotoXY(x, y);
+   std::cout << "*";
+ }
++
++DestroyableGroundObject*
++      Bomb::CheckDestoyableObjects(std::vector<DestroyableGroundObject*> vecDestoyableObjects)
++{
++  const double size = GetWidth();
++  const double size_2 = size / 2;
++  for (size_t i = 0; i < vecDestoyableObjects.size(); i++) {
++    const double x1 = GetX() - size_2;
++    const double x2 = x1 + size;
++    if (vecDestoyableObjects[i]->HandleInsideCheck(x1,x2)) {
++        return vecDestoyableObjects[i];
++        //break;
++    }
++  }
++  return nullptr;
++};
++
++//bool Bomb::NotifyObserver() {
++//  for (size_t i=0;i<observers.size(); i++) {
++//   observers[i]->HandleInsideCheck();
++//  };
++//  return true;
++//};
++
++//void Bomb::AddObserver(Observer* o) {
++//  observers.push_back(o);
++//};
+diff --git a/src/House.cpp b/src/House.cpp
+index 3fb1e70..1b05e61 100644
+--- a/src/House.cpp
++++ b/src/House.cpp
+@@ -42,3 +42,9 @@ void House::Draw() const
+ 	ScreenSingleton::getInstance().GotoXY(x, y);
+ 	std::cout << "############";
+ }
++
++
++bool House::HandleInsideCheck(const double x1, const double x2) const
++{
++    return isInside(x1,x2);
++};
+diff --git a/src/SBomber.cpp b/src/SBomber.cpp
+index 2bd57d7..c701502 100644
+--- a/src/SBomber.cpp
++++ b/src/SBomber.cpp
+@@ -49,9 +49,9 @@ SBomber::SBomber()
+   pTank->SetPos(50, groundY - 1);
+   vecStaticObj.push_back(pTank);
+ 
+-  House* pHouse = new House;
++  House* pHouse = new House();
+   pHouse->SetWidth(13);
+-  pHouse->SetPos(80, groundY - 1);
++  pHouse->SetPos(10, groundY - 1);
+   vecStaticObj.push_back(pHouse);
+ 
+   /*
+@@ -108,26 +108,35 @@ void SBomber::CheckBombsAndGround() {
+   for (size_t i = 0; i < vecBombs.size(); i++) {
+     if (vecBombs[i]->GetY() >= y) {
+       pGround->AddCrater(vecBombs[i]->GetX());
+-      CheckDestoyableObjects(vecBombs[i]);
++
++      //CheckDestoyableObjects(vecBombs[i]);
++      std::vector<DestroyableGroundObject*> vecDestoyableObjects =
++          FindDestoyableGroundObjects();
++      DestroyableGroundObject* dst=vecBombs[i]->CheckDestoyableObjects(vecDestoyableObjects);
++      if (dst!=nullptr) {
++       score += dst->GetScore();
++       DeleteStaticObj(dst);
++      }
++
+       DeleteDynamicObj(vecBombs[i]);
+     }
+   }
+ }
+ 
+-void SBomber::CheckDestoyableObjects(Bomb* pBomb) {
+-  std::vector<DestroyableGroundObject*> vecDestoyableObjects =
+-      FindDestoyableGroundObjects();
+-  const double size = pBomb->GetWidth();
+-  const double size_2 = size / 2;
+-  for (size_t i = 0; i < vecDestoyableObjects.size(); i++) {
+-    const double x1 = pBomb->GetX() - size_2;
+-    const double x2 = x1 + size;
+-    if (vecDestoyableObjects[i]->isInside(x1, x2)) {
+-      score += vecDestoyableObjects[i]->GetScore();
+-      DeleteStaticObj(vecDestoyableObjects[i]);
+-    }
+-  }
+-}
++//void SBomber::CheckDestoyableObjects(Bomb* pBomb) {
++//  std::vector<DestroyableGroundObject*> vecDestoyableObjects =
++//      FindDestoyableGroundObjects();
++//  const double size = pBomb->GetWidth();
++//  const double size_2 = size / 2;
++//  for (size_t i = 0; i < vecDestoyableObjects.size(); i++) {
++//    const double x1 = pBomb->GetX() - size_2;
++//    const double x2 = x1 + size;
++//    if (vecDestoyableObjects[i]->isInside(x1, x2)) {
++//      score += vecDestoyableObjects[i]->GetScore();
++//      DeleteStaticObj(vecDestoyableObjects[i]);
++//    }
++//  }
++//}
+ 
+ void SBomber::DeleteDynamicObj(DynamicObject* pObj) {
+   auto it = vecDynamicObj.begin();
+@@ -307,5 +316,17 @@ void SBomber::DropBomb() {
+     vecDynamicObj.push_back(pBomb);
+     bombsNumber--;
+     score -= Bomb::BombCost;
+-  }
++
++//    for (size_t i = 0; i < vecStaticObj.size(); i++) {
++//     Tank* pTank = dynamic_cast<Tank*>(vecStaticObj[i]);
++//     if (pTank != nullptr) {
++//      pBomb->AddObserver(pTank);
++//      continue;
++//     };
++//     House* pHouse = dynamic_cast<House*>(vecStaticObj[i]);
++//     if (pHouse != nullptr) {
++//      pBomb->AddObserver(pHouse);
++//     };
++//    };
++  };
+ }
+diff --git a/src/Tank.cpp b/src/Tank.cpp
+index ab0b881..ee25f30 100644
+--- a/src/Tank.cpp
++++ b/src/Tank.cpp
+@@ -43,3 +43,9 @@ void Tank::Draw() const
+ 	ScreenSingleton::getInstance().GotoXY(x,y);
+ 	cout << " ###########";
+ }
++
++bool Tank::HandleInsideCheck(const double x1, const double x2) const
++{
++    return isInside(x1,x2);
++};
++
